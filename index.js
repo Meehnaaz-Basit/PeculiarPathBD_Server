@@ -63,6 +63,20 @@ async function run() {
       res.send(result);
     });
 
+    // get packages by tour type category
+    app.get("/packages/tour-type/:tourType", async (req, res) => {
+      try {
+        const tourType = req.params.tourType;
+        const query = { tour_type: tourType };
+
+        const result = await pakagesCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching packages by tour_type:", error);
+        res.status(500).send("Error fetching packages by tour_type");
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
