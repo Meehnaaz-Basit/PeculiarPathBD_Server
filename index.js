@@ -33,11 +33,20 @@ async function run() {
     const tourTypeCollection = client
       .db("peculiarpathsbd")
       .collection("tourType");
+    // user collection
+    const usersCollection = client.db("peculiarpathsbd").collection("users");
 
     // tour guide collection
     const tourGuidesCollection = client
       .db("peculiarpathsbd")
       .collection("tourGuides");
+
+    // *** users****
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
     // get all packages
     app.get("/packages", async (req, res) => {
