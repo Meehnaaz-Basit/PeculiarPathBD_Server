@@ -29,6 +29,10 @@ async function run() {
     const pakagesCollection = client
       .db("peculiarpathsbd")
       .collection("pakages");
+    // tourType collection
+    const tourTypeCollection = client
+      .db("peculiarpathsbd")
+      .collection("tourType");
 
     // tour guide collection
     const tourGuidesCollection = client
@@ -60,6 +64,12 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await tourGuidesCollection.findOne(query);
+      res.send(result);
+    });
+
+    // get all tourType
+    app.get("/tourType", async (req, res) => {
+      const result = await tourTypeCollection.find().toArray();
       res.send(result);
     });
 
