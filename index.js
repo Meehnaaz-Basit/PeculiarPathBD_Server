@@ -25,9 +25,15 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
 
+    // packages collection
     const pakagesCollection = client
       .db("peculiarpathsbd")
       .collection("pakages");
+
+    // tour guide collection
+    const tourGuidesCollection = client
+      .db("peculiarpathsbd")
+      .collection("tourGuides");
 
     // get all packages
     app.get("/packages", async (req, res) => {
@@ -40,6 +46,12 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await pakagesCollection.findOne(query);
+      res.send(result);
+    });
+
+    // get all tour guides
+    app.get("/tourGuides", async (req, res) => {
+      const result = await tourGuidesCollection.find().toArray();
       res.send(result);
     });
 
