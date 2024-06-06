@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
@@ -41,9 +42,46 @@ async function run() {
       .db("peculiarpathsbd")
       .collection("tourGuides");
 
+    // ********* admin ********
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+    // ********* admin ********
+    // ********* guide ********
+    app.patch("/users/guide/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "guide",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+    // ********* guide ********
+
+    // get all user
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
     // *** users****
     app.post("/users", async (req, res) => {
       const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "User already exists", insertedId: null });
+      }
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
@@ -59,6 +97,13 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await pakagesCollection.findOne(query);
+      res.send(result);
+    });
+
+    // post package from front end to db
+    app.post("/packages", async (req, res) => {
+      const newItem = req.body;
+      const result = await pakagesCollection.insertOne(newItem);
       res.send(result);
     });
 
