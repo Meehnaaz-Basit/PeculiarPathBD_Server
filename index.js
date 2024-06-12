@@ -41,7 +41,13 @@ async function run() {
     const tourGuidesCollection = client
       .db("peculiarpathsbd")
       .collection("tourGuides");
+    // booking collection
+    const bookingsCollection = client
+      .db("peculiarpathsbd")
+      .collection("bookings");
 
+    // story collection
+    const storyCollection = client.db("peculiarpathsbd").collection("stories");
     // ************ jwt *********
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -99,6 +105,8 @@ async function run() {
       res.send({ admin });
     });
 
+    //
+
     app.patch(
       "/users/admin/:id",
       verifyToken,
@@ -116,11 +124,42 @@ async function run() {
       }
     );
     // ********* admin ********
+
+    // verify guide after token
+    const verifyGuide = async (req, res, next) => {
+      const email = req.body.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const isGuide = user?.role === "guide";
+
+      if (!isGuide) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      next();
+    };
+    //
+    app.get("/users/guide/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+
+      let guide = false;
+      if (user) {
+        guide = user?.role === "guide";
+      }
+      res.send({ guide });
+    });
+
     // ********* guide ********
     app.patch(
       "/users/guide/:id",
       verifyToken,
-      verifyAdmin,
+      verifyGuide,
       async (req, res) => {
         const id = req.params.id;
         const filter = { _id: new ObjectId(id) };
@@ -136,7 +175,7 @@ async function run() {
     // ********* guide ********
 
     // get all user
-    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/users", async (req, res) => {
       // console.log(req.headers);
       const result = await usersCollection.find().toArray();
       res.send(result);
@@ -206,6 +245,42 @@ async function run() {
         console.error("Error fetching packages by tour_type:", error);
         res.status(500).send("Error fetching packages by tour_type");
       }
+    });
+    // post user story from front end to db
+    app.post("/usersStory", async (req, res) => {
+      const newItem = req.body;
+      const result = await storyCollection.insertOne(newItem);
+      res.send(result);
+    });
+    // user story
+    app.get("/usersStory", async (req, res) => {
+      const result = await storyCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/usersStory/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await storyCollection.findOne(query);
+      res.send(result);
+    });
+
+    // bookings
+    // post package from front end to db
+    app.post("/bookings", async (req, res) => {
+      const newItem = req.body;
+      const result = await bookingsCollection.insertOne(newItem);
+      res.send(result);
+    });
+    // get booking by id
+    app.get("/bookings/:email", async (req, res) => {
+      const id = req.params.email;
+      const query = { email: email };
+      const result = await bookingsCollection.findOne(query);
+      res.send(result);
+    });
+    app.get("/bookings", async (req, res) => {
+      const result = await bookingsCollection.find().toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
