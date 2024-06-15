@@ -180,6 +180,12 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
     // *** users****
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -190,6 +196,30 @@ async function run() {
       }
       const result = await usersCollection.insertOne(user);
       res.send(result);
+    });
+    // update user (guide)
+    // Update user profile endpoint
+    app.patch("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const updatedProfile = req.body; // Updated profile data from frontend
+
+      try {
+        const query = { email: email };
+        const updateDoc = {
+          $set: updatedProfile,
+        };
+
+        const result = await usersCollection.updateOne(query, updateDoc);
+
+        if (result.matchedCount === 1) {
+          res.status(200).send({ message: "Profile updated successfully" });
+        } else {
+          res.status(404).send({ error: "User not found" });
+        }
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        res.status(500).send({ error: "Internal server error" });
+      }
     });
 
     // get all packages
@@ -213,20 +243,41 @@ async function run() {
       res.send(result);
     });
 
-    // get all tour guides
-    app.get("/tourGuides", async (req, res) => {
-      const result = await tourGuidesCollection.find().toArray();
-      res.send(result);
-    });
+    // get all tour guides **********************--------
+    // app.get("/tourGuides", async (req, res) => {
+    //   const result = await tourGuidesCollection.find().toArray();
+    //   res.send(result);
+    // });
 
-    // get tour guide by id
+    // // get tour guide by id ************************--------------
     app.get("/tourGuides/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await tourGuidesCollection.findOne(query);
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+    // tour guide by email
+    app.get("/tourGuides/email/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
       res.send(result);
     });
 
+    // *******************************
+    // get all guides
+    app.get("/tourGuides", async (req, res) => {
+      try {
+        const query = { role: "guide" };
+        const tourGuides = await usersCollection.find(query).toArray();
+        res.send(tourGuides);
+      } catch (error) {
+        console.error("Error fetching guides:", error);
+        res.status(500).send("Error fetching guides");
+      }
+    });
+
+    // *******************************
     // get all tourType
     app.get("/tourType", async (req, res) => {
       const result = await tourTypeCollection.find().toArray();
@@ -268,19 +319,42 @@ async function run() {
     // post package from front end to db
     app.post("/bookings", async (req, res) => {
       const newItem = req.body;
+      newItem.status = "In Review";
       const result = await bookingsCollection.insertOne(newItem);
       res.send(result);
     });
-    // get booking by id
+    // get booking by email
     app.get("/bookings/:email", async (req, res) => {
-      const id = req.params.email;
+      const email = req.params.email;
       const query = { email: email };
-      const result = await bookingsCollection.findOne(query);
+      const result = await bookingsCollection.find(query).toArray();
       res.send(result);
     });
+    //all bookings
     app.get("/bookings", async (req, res) => {
       const result = await bookingsCollection.find().toArray();
       res.send(result);
+    });
+    // DELETE a booking by ID
+    app.delete("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await bookingsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        console.log(`Delete result: ${JSON.stringify(result)}`); // Log the result
+        if (result.deletedCount === 1) {
+          res.status(200).send({
+            message: "Booking deleted successfully",
+            deletedCount: result.deletedCount,
+          });
+        } else {
+          res.status(404).send({ error: "Booking not found" });
+        }
+      } catch (error) {
+        console.error("Error deleting booking:", error);
+        res.status(500).send({ error: "Internal server error" });
+      }
     });
 
     // Send a ping to confirm a successful connection
