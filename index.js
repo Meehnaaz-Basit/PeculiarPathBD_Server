@@ -52,6 +52,9 @@ async function run() {
     const wishListCollection = client
       .db("peculiarpathsbd")
       .collection("wishList");
+    const requestCollection = client
+      .db("peculiarpathsbd")
+      .collection("request");
 
     //*************************************************************************
     // // ************ jwt *********
@@ -378,6 +381,7 @@ async function run() {
         const updatedDoc = {
           $set: {
             role: "admin",
+            // requestedRole: false,
           },
         };
         try {
@@ -482,7 +486,7 @@ async function run() {
       }
     });
 
-    // Update user profile endpoint
+    // Update user profile
     app.patch("/users/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const updatedProfile = req.body;
@@ -690,46 +694,122 @@ async function run() {
       }
     });
 
-    // wishList *******
+    // wishList *** ****
+    // post bookings from front end to db
+    // Example: Handle POST request to /wishList endpoint
+    // app.get("/wishList/:email/:itemId", async (req, res) => {
+    //   const { email, itemId } = req.params;
 
-    // post wishList from UI to db
-    //  add/remove wishlist items
-    app.post("/wishList", verifyToken, async (req, res) => {
-      const { email, packageId } = req.body;
+    //   try {
+    //     const existingItem = await wishListCollection.findOne({
+    //       email,
+    //       itemId,
+    //     });
 
-      try {
-        const existingWish = await wishListCollection.findOne({
-          email,
-          packageId,
-        });
-        if (existingWish) {
-          await wishListCollection.deleteOne({ email, packageId });
-          return res
-            .status(200)
-            .send({ message: "Item removed from wishlist" });
-        } else {
-          const newItem = { email, packageId };
-          const result = await wishListCollection.insertOne(newItem);
-          return res.status(200).send(result);
-        }
-      } catch (error) {
-        console.error("Error managing wishlist:", error);
-        res.status(500).send({ error: "Internal server error" });
-      }
-    });
-
-    //  get wishlist items for a user
-    app.get("/wishList/:email", verifyToken, async (req, res) => {
+    //     if (existingItem) {
+    //       return res.status(200).json({ exists: true });
+    //     } else {
+    //       return res.status(200).json({ exists: false });
+    //     }
+    //   } catch (error) {
+    //     console.error("Error checking wishlist:", error);
+    //     res.status(500).send("Internal Server Error");
+    //   }
+    // });
+    // GET route to fetch all wishlist items for a user
+    app.get("/wishList/:email", async (req, res) => {
       const { email } = req.params;
 
       try {
         const wishListItems = await wishListCollection
           .find({ email })
           .toArray();
-        res.send(wishListItems);
+        res.status(200).json(wishListItems);
       } catch (error) {
         console.error("Error fetching wishlist:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+    // POST route to add an item to the wishlist
+    app.post("/wishList/:email", async (req, res) => {
+      const { email } = req.params;
+      const { itemId, title } = req.body;
+
+      try {
+        // Check if the item already exists in the wishlist for the user
+        const existingItem = await wishListCollection.findOne({
+          email,
+          itemId,
+        });
+
+        if (existingItem) {
+          return res
+            .status(400)
+            .json({ message: "Item already saved in wishlist" });
+        }
+
+        // Insert the new item into the wishlist
+        const result = await wishListCollection.insertOne({
+          email,
+          itemId,
+          title,
+        });
+
+        res.status(201).json({ message: "Item added to wishlist", result });
+      } catch (error) {
+        console.error("Error adding to wishlist:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+    app.delete("/wishList/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await wishListCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        console.log(`Delete result: ${JSON.stringify(result)}`);
+        if (result.deletedCount === 1) {
+          res.status(200).send({
+            message: "WishList removed successfully",
+            deletedCount: result.deletedCount,
+          });
+        } else {
+          res.status(404).send({ error: "WishList not found" });
+        }
+      } catch (error) {
+        console.error("Error deleting wishList", error);
         res.status(500).send({ error: "Internal server error" });
+      }
+    });
+
+    // ****************
+    // request to admin
+
+    app.post("/request", async (req, res) => {
+      const newItem = req.body;
+      const result = await requestCollection.insertOne(newItem);
+
+      //
+      await usersCollection.updateOne(
+        { email: newItem.email },
+        { $set: { requestedRole: true } }
+      );
+
+      res.send(result);
+    });
+
+    // Get all users who have requested a role
+    app.get("/request", async (req, res) => {
+      try {
+        const result = await usersCollection
+          .find({ requestedRole: true })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
