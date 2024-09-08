@@ -581,8 +581,10 @@ async function run() {
         total_amount: ordered?.price,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `http://localhost:5000/payment/success/${tran_id}`,
-        fail_url: `http://localhost:5000/payment/failed/${tran_id}`,
+        // success_url: `http://localhost:5000/payment/success/${tran_id}`,
+        success_url: `https://peculiarbd.netlify.app/payment/success/${tran_id}`,
+        // fail_url: `http://localhost:5000/payment/failed/${tran_id}`,
+        fail_url: `https://peculiarbd.netlify.app/payment/failed/${tran_id}`,
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
@@ -640,7 +642,10 @@ async function run() {
           }
         );
         if (result.modifiedCount > 0) {
-          res.redirect(`http://localhost:5173/payment/success/${tran_id}`);
+          // res.redirect(`http://localhost:5173/payment/success/${tran_id}`);
+          res.redirect(
+            `https://peculiarbd.netlify.app/payment/success/${tran_id}`
+          );
         }
       });
 
@@ -650,7 +655,10 @@ async function run() {
           transactionId: req.params.tranId,
         });
         if (result.deletedCount) {
-          res.redirect(`http://localhost:5173/payment/failed/${tran_id}`);
+          // res.redirect(`http://localhost:5173/payment/failed/${tran_id}`);
+          res.redirect(
+            `https://peculiarbd.netlify.app/payment/failed/${tran_id}`
+          );
         }
       });
     });
