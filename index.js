@@ -3,6 +3,7 @@ const cors = require("cors");
 const app = express();
 const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
+const SSLCommerzPayment = require("sslcommerz-lts");
 require("dotenv").config();
 
 // middleware
@@ -20,6 +21,11 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+// ssl e-commerce
+const store_id = process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASS;
+const is_live = false; //true for live, false for sandbox
 
 async function run() {
   try {
@@ -55,6 +61,7 @@ async function run() {
     const requestCollection = client
       .db("peculiarpathsbd")
       .collection("request");
+    const orderCollection = client.db("peculiarpathsbd").collection("order");
 
     //*************************************************************************
     // ************ jwt *********
@@ -560,6 +567,85 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
+    /************ ORDER RELATED ********** */
+    const tran_id = new ObjectId().toString();
+
+    app.post("/order/confirm", async (req, res) => {
+      // const orderId = await bookingsCollection.findOne({
+      //   _id: new ObjectId(req.body.orderId),
+      // });
+      // console.log(orderId);
+      const ordered = req.body;
+      // console.log(ordered);
+      const data = {
+        total_amount: ordered?.price,
+        currency: "BDT",
+        tran_id: tran_id, // use unique tran_id for each api call
+        success_url: `http://localhost:5000/payment/success/${tran_id}`,
+        fail_url: "http://localhost:3030/fail",
+        cancel_url: "http://localhost:3030/cancel",
+        ipn_url: "http://localhost:3030/ipn",
+        shipping_method: "Courier",
+        product_name: ordered?.packageName,
+        product_category: "Electronic",
+        product_profile: "general",
+        cus_name: ordered?.name,
+        cus_email: ordered.email,
+        cus_add1: "Dhaka",
+        cus_add2: "Dhaka",
+        cus_city: "Dhaka",
+        cus_state: "Dhaka",
+        cus_postcode: "1000",
+        cus_country: "Bangladesh",
+        cus_phone: "01711111111",
+        cus_fax: "01711111111",
+        ship_name: "Customer Name",
+        ship_add1: "Dhaka",
+        ship_add2: "Dhaka",
+        ship_city: "Dhaka",
+        ship_state: "Dhaka",
+        ship_postcode: 1000,
+        ship_country: "Bangladesh",
+      };
+
+      console.log(data);
+      const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+      sslcz.init(data).then((apiResponse) => {
+        // Redirect the user to payment gateway
+        let GatewayPageURL = apiResponse.GatewayPageURL;
+        res.send({ url: GatewayPageURL });
+
+        const finalOrder = {
+          ordered,
+          paidStatus: false,
+          transactionId: tran_id,
+        };
+
+        const result = orderCollection.insertOne(finalOrder);
+
+        console.log("Redirecting to: ", GatewayPageURL);
+      });
+
+      app.post("/payment/success/:tranId", async (req, res) => {
+        console.log("payment success", req.params.tranId);
+
+        const result = await orderCollection.updateOne(
+          {
+            transactionId: req.params.tranId,
+          },
+          {
+            $set: {
+              paidStatus: true,
+            },
+          }
+        );
+        if (result.modifiedCount > 0) {
+          res.redirect(`http://localhost:5173/payment/success/${tran_id}`);
+        }
+      });
+    });
+
+    // ********
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
